@@ -6,6 +6,7 @@ namespace Eimed\Modules\CommdooPayment\Controller;
 use Eimed\Modules\CommdooPayment\Api\ApiFrontendUrlValidator;
 use Eimed\Modules\CommdooPayment\Api\ApiSuccessfulUrlValidator;
 use Eimed\Modules\CommdooPayment\Api\ApiUrlValidatorService;
+use Eimed\Modules\CommdooPayment\Constants;
 use Eimed\Modules\CommdooPayment\Exception\CommdooPaymentFailedException;
 use Eimed\Modules\CommdooPayment\Model\CommDooOrder;
 use Eimed\Modules\CommdooPayment\Module;
@@ -34,7 +35,7 @@ class OrderController extends OrderController_parent
         if (!empty($sSessChallenge) && $blCommdooIsRedirected === true) {
             $oOrder = oxNew(Order::class);
             if ($oOrder->load($sSessChallenge) === true) {
-                if ($oOrder->oxorder__oxtransstatus->value != 'OK') {
+                if ($oOrder->oxorder__oxtransstatus->value !== Constants::TRANSACTION_STATUS_OK) {
                     $oOrder->cancelOrder();
                 }
             }
@@ -92,13 +93,13 @@ class OrderController extends OrderController_parent
 
                 $aResult = $this->handleRequestValues($validator, $oOrder);
                 if ($aResult['success'] === false) {
-                    $status = 'CANCELED';
+                    $status = Constants::PAYMENT_STATUS_CANCELED;
 
                     $sErrorIdent = 'COMMDOO_ERROR_SOMETHING_WENT_WRONG';
                     if ($aResult['status'] == 'canceled') {
                         $sErrorIdent = 'COMMDOO_ERROR_ORDER_CANCELED';
                     } elseif ($aResult['status'] == 'failed') {
-                        $status = 'FAILED';
+                        $status = Constants::PAYMENT_STATUS_FAILED;
                         $sErrorIdent = 'COMMDOO_ERROR_ORDER_FAILED';
                     }
 
@@ -116,8 +117,8 @@ class OrderController extends OrderController_parent
 
                     // Provide backward compatibility
                     if ($bReturn) {
-                        if ($oOrder->oxorder__cdpaymentstatus->value === 'PENDING') {
-                            $oOrder->oxorder__oxtransstatus->setValue('PAYMENT_PENDING');
+                        if ($oOrder->oxorder__cdpaymentstatus->value === Constants::PAYMENT_STATUS_PENDING) {
+                            $oOrder->oxorder__oxtransstatus->setValue(Constants::TRANSACTION_STATUS_PENDING);
                             $oOrder->save();
                         }
                     }
@@ -132,7 +133,7 @@ class OrderController extends OrderController_parent
                 Registry::getLogger()->error($exception->getMessage(), $exception->getTrace());
 
                 if ($oOrder) {
-                    $oOrder->oxorder__oxtransstatus = new Field('ERROR');
+                    $oOrder->oxorder__oxtransstatus = new Field(Constants::TRANSACTION_STATUS_FAILED);
                     $oOrder->oxorder__oxfolder = new Field('ORDERFOLDER_PROBLEMS');
 
                     $cancelMode = Registry::getConfig()->getConfigParam('sCD_cancelMode');
@@ -202,7 +203,7 @@ class OrderController extends OrderController_parent
         {
             case 'Reserved':
                 $oOrder->oxorder__oxtransid = new Field("{$referenceid}:{$transactionid}");
-                $oOrder->oxorder__cdpaymentstatus = new Field('PENDING');
+                $oOrder->oxorder__cdpaymentstatus = new Field(Constants::PAYMENT_STATUS_PENDING);
                 break;
 
             case 'Charged':
@@ -211,7 +212,7 @@ class OrderController extends OrderController_parent
                     $timestamp = date("Y-m-d H:i:s");
                     $this->debug("Saving date as $timestamp");
                     $oOrder->oxorder__oxpaid = new Field ($timestamp);
-                    $oOrder->oxorder__cdpaymentstatus = new Field('OK');
+                    $oOrder->oxorder__cdpaymentstatus = new Field(Constants::PAYMENT_STATUS_OK);
                 }
                 break;
         }

@@ -5,6 +5,7 @@ namespace Eimed\Modules\CommdooPayment\Model;
 
 
 use Eimed\Modules\CommdooPayment\Api\ApiFrontendUrlValidator;
+use Eimed\Modules\CommdooPayment\Constants;
 use Eimed\Modules\CommdooPayment\Traits\LoggerTrait;
 use OxidEsales\Eshop\Application\Model\PaymentGateway;
 use OxidEsales\Eshop\Core\DatabaseProvider;
@@ -95,8 +96,8 @@ class CommDooPaymentGateway extends CommDooPaymentGateway_parent
         $this->getLogger()->log($logData);
 
         // change order status
-        $oOrder->oxorder__oxtransstatus = new Field('PAYMENT_PENDING');
-        $oOrder->oxorder__cdpaymentstatus = new Field('STARTED');
+        $oOrder->oxorder__oxtransstatus = new Field(Constants::TRANSACTION_STATUS_PENDING);
+        $oOrder->oxorder__cdpaymentstatus = new Field(Constants::PAYMENT_STATUS_STARTED);
         $oOrder->oxorder__oxfolder = new Field('ORDERFOLDER_NEW');
         $oOrder->save();
 
