@@ -3,11 +3,9 @@ declare(strict_types=1);
 
 namespace Eimed\Modules\CommdooPayment\Controller;
 
-use Eimed\Modules\CommdooPayment\Api\ApiFrontendUrlValidator;
 use Eimed\Modules\CommdooPayment\Api\ApiSuccessfulUrlValidator;
 use Eimed\Modules\CommdooPayment\Api\ApiUrlValidatorService;
 use Eimed\Modules\CommdooPayment\Constants;
-use Eimed\Modules\CommdooPayment\Exception\CommdooPaymentFailedException;
 use Eimed\Modules\CommdooPayment\Model\CommDooOrder;
 use Eimed\Modules\CommdooPayment\Module;
 use Eimed\Modules\CommdooPayment\Traits\LoggerTrait;
@@ -163,7 +161,7 @@ class OrderController extends OrderController_parent
         $errornumber       = $request->get("errornumber");
         $errortext         = $request->get("errortext");
 
-        $oOrder->oxorder__providerpurpose = $providerpurpose;
+        $oOrder->oxorder__providerpurpose = new Field($providerpurpose);
 
         // Check if is faild callback
         if (!empty($errornumber) || !empty($errortext)) {
