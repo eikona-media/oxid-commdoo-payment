@@ -1,0 +1,34 @@
+{
+    "name":        "eimed/oxid-commdoo-payment",
+    "description": "Oxid eSales Integration for Commdoo payment",
+    "type":        "oxideshop-module",
+    "version":     "1.0.0",
+    "keywords":    [
+        "oxid",
+        "modules",
+        "payment"
+    ],
+    "license":     [
+        "proprietary"
+    ],
+    "authors":     [
+        {
+            "name":  "EIKONA Media",
+            "email": "info@eikona-media.de",
+            "homepage": "https://www.eikona-media.de"
+        }
+    ],
+    "extra":       {
+        "oxideshop": {
+            "target-directory": "eimed/commdoo-payment"
+        }
+    },
+    "require":     {
+        "php": ">=7.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "Eimed\\Modules\\CommdooPayment\\": "../../../source/modules/eimed/commdoo-payment/src"
+        }
+    }
+}
