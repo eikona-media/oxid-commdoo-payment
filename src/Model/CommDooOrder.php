@@ -54,6 +54,8 @@ class CommDooOrder extends CommDooOrder_parent
      */
     protected $commdooTmpOrderNr = null;
 
+    private $isCommdooInit = false;
+
     /**
      * CommDoo Order Constructor
      */
@@ -62,6 +64,24 @@ class CommDooOrder extends CommDooOrder_parent
         parent::__construct();
         $this->addFieldName('providerpurpose');
         $this->addFieldName('cdpaymentstatus');
+    }
+
+    /**
+     * @param Basket $oBasket
+     * @return void
+     */
+    private function commdooInit(Basket $oBasket)
+    {
+        if (!$this->isCommdooInit) {
+            $returnAfterPayment = (Registry::getRequest()->getRequestEscapedParameter('fnc') == 'handleCommDooReturn');
+            if (Module::supportsPaymentType($oBasket->getPaymentId()) === true && $returnAfterPayment) {
+                $this->commdooFinalizeReturnMode = true;
+            }
+            if (Registry::getSession()->getVariable('commdooReinitializePaymentMode')) {
+                $this->commdooReinitializePaymentMode = true;
+            }
+            $this->isCommdooInit = true;
+        }
     }
 
     public function isCommDooOrder()
@@ -105,15 +125,8 @@ class CommDooOrder extends CommDooOrder_parent
      */
     public function finalizeOrder(\OxidEsales\Eshop\Application\Model\Basket $oBasket, $oUser, $blRecalculatingOrder = false)
     {
-        $returnAfterPayment = (Registry::getRequest()->getRequestEscapedParameter('fnc') == 'handleCommDooReturn');
-
+        $this->commdooInit($oBasket);
         $this->commdooRecalculateOrder = $blRecalculatingOrder;
-        if (Module::supportsPaymentType($oBasket->getPaymentId()) === true && $returnAfterPayment) {
-            $this->commdooFinalizeReturnMode = true;
-        }
-        if (Registry::getSession()->getVariable('commdooReinitializePaymentMode')) {
-            $this->commdooReinitializePaymentMode = true;
-        }
         return parent::finalizeOrder($oBasket, $oUser, $blRecalculatingOrder);
     }
 
@@ -128,6 +141,7 @@ class CommDooOrder extends CommDooOrder_parent
      */
     public function validatePayment($oBasket, $oUser = null)
     {
+        $this->commdooInit($oBasket);
         if ($this->commdooReinitializePaymentMode === false) {
             $oReflection = new \ReflectionMethod(\OxidEsales\Eshop\Application\Model\Order::class, 'validatePayment');
             $aParams = $oReflection->getParameters();
@@ -146,6 +160,7 @@ class CommDooOrder extends CommDooOrder_parent
      */
     public function validateStock($oBasket)
     {
+        $this->commdooInit($oBasket);
         if ($this->commdooFinalizeReturnMode === false) {
             return parent::validateStock($oBasket);
         }
@@ -162,6 +177,7 @@ class CommDooOrder extends CommDooOrder_parent
      */
     public function validateOrder($oBasket, $oUser)
     {
+        $this->commdooInit($oBasket);
         if ($this->commdooFinishOrderReturnMode === false) {
             return parent::validateOrder($oBasket, $oUser);
         }
@@ -209,6 +225,7 @@ class CommDooOrder extends CommDooOrder_parent
      */
     protected function _loadFromBasket(\OxidEsales\Eshop\Application\Model\Basket $oBasket)
     {
+        $this->commdooInit($oBasket);
         if ($this->commdooFinalizeReturnMode === false) {
             return parent::_loadFromBasket($oBasket);
         }
@@ -239,6 +256,8 @@ class CommDooOrder extends CommDooOrder_parent
      */
     public function commdooRecreateBasket()
     {
+        Registry::getSession()->setVariable('commdoo_ignoreStockCheck', true);
+
         $oBasket = $this->_getOrderBasket();
 
         // add this order articles to virtual basket and recalculates basket
@@ -257,6 +276,8 @@ class CommDooOrder extends CommDooOrder_parent
         Registry::getSession()->setVariable('paymentid', $this->oxorder__oxpaymenttype->value);
         Registry::getSession()->setBasket($oBasket);
 
+        Registry::getSession()->deleteVariable('commdoo_ignoreStockCheck');
+
         return $oBasket;
     }
 
@@ -267,8 +288,5 @@ class CommDooOrder extends CommDooOrder_parent
 
         $this->commdooFinalizeReturnMode = true;
         $this->commdooFinishOrderReturnMode = true;
-
-        //finalizing order (skipping payment execution, vouchers marking and mail sending
-        // return $this->finalizeOrder($oBasket, $this->getOrderUser());
     }
 }

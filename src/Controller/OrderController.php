@@ -11,8 +11,10 @@ use Eimed\Modules\CommdooPayment\Module;
 use Eimed\Modules\CommdooPayment\Traits\LoggerTrait;
 use OxidEsales\Eshop\Application\Model\Order;
 use OxidEsales\Eshop\Application\Model\Payment;
+use OxidEsales\Eshop\Core\DatabaseProvider;
 use OxidEsales\Eshop\Core\Field;
 use OxidEsales\Eshop\Core\Registry;
+use OxidEsales\EshopCommunity\Core\Database\Adapter\Doctrine\Database;
 use Weing\Modules\ProhandelConnector\Exception\CommdooPaymentException;
 
 /**
@@ -61,14 +63,27 @@ class OrderController extends OrderController_parent
      */
     public function handleCommDooReturn()
     {
-        /** @var Payment $oPayment */
-        $oPayment = $this->getPayment();
-        if ($oPayment &&  Module::supportsPaymentType($oPayment->getId())) {
+        /** @var CommDooOrder $oOrder */
+        $oOrder = null;
 
-            /** @var CommDooOrder $oOrder */
-            $oOrder = null;
+        try {
+            $oOrder = $this->commdooGetOrder();
+            if (!$oOrder) {
+                $this->getLogger()->debug([
+                    'sess_challenge' => Registry::getSession()->getVariable('sess_challenge'),
+                    'order_number' => Registry::getRequest()->getRequestEscapedParameter('onr')
+                ]);
+                throw new CommdooPaymentException(Registry::getLang()->translateString('COMMDOO_ERROR_ORDER_NOT_FOUND'));
+            }
 
-            try {
+            if ($oOrder->getBasket() === null) {
+                $oOrder->commdooRecreateBasket();
+            }
+
+            /** @var Payment $oPayment */
+            $oPayment = $this->getPayment();
+            if ($oPayment && Module::supportsPaymentType($oPayment->getId())) {
+
                 /** @var ApiUrlValidatorService $response */
                 $validator = $this->isRequestValid($_REQUEST);
                 if ($validator === null) {
@@ -76,16 +91,6 @@ class OrderController extends OrderController_parent
                 }
 
                 Registry::getSession()->deleteVariable('commdooIsRedirected');
-
-                $oOrder = $this->commdooGetOrder();
-                if (!$oOrder) {
-                    $this->getLogger()->debug(['sess_challenge' => Registry::getSession()->getVariable('sess_challenge')]);
-                    throw new CommdooPaymentException(Registry::getLang()->translateString('COMMDOO_ERROR_ORDER_NOT_FOUND'));
-                }
-
-                if ($oOrder->getBasket() === null) {
-                    $oOrder->commdooRecreateBasket();
-                }
 
                 $this->getLogger()->setOrderId($oOrder->oxorder__oxordernr->value);
 
@@ -124,28 +129,27 @@ class OrderController extends OrderController_parent
 
                     return $bReturn;
                 }
-            } catch (\Throwable $exception)
-            {
-                $this->getLogger()->setTitle($exception->getMessage());
-                $this->getLogger()->debug($exception->getTrace());
-                $this->getLogger()->log($_REQUEST);
-                Registry::getLogger()->error($exception->getMessage(), $exception->getTrace());
+            }
+        } catch (\Throwable $exception) {
+            $this->getLogger()->setTitle($exception->getMessage());
+            $this->getLogger()->debug($exception->getTrace());
+            $this->getLogger()->log($_REQUEST);
+            Registry::getLogger()->error($exception->getMessage(), $exception->getTrace());
 
-                if ($oOrder) {
-                    $oOrder->oxorder__oxtransstatus = new Field(Constants::TRANSACTION_STATUS_FAILED);
-                    $oOrder->oxorder__oxfolder = new Field('ORDERFOLDER_PROBLEMS');
+            if ($oOrder) {
+                $oOrder->oxorder__oxtransstatus = new Field(Constants::TRANSACTION_STATUS_FAILED);
+                $oOrder->oxorder__oxfolder = new Field('ORDERFOLDER_PROBLEMS');
 
-                    $cancelMode = Registry::getConfig()->getConfigParam('sCD_cancelMode');
-                    if (!empty($cancelMode) && $cancelMode === 'delete') {
-                        $oOrder->delete();
-                    } else {
-                        $oOrder->cancelOrder();
-                    }
-
-                    $sPaymentUrl = Registry::getConfig()->getCurrentShopUrl() . 'index.php?cl=payment';
-                    Registry::getSession()->setVariable('commdooReinitializePaymentMode', true);
-                    Registry::getUtils()->redirect($sPaymentUrl);
+                $cancelMode = Registry::getConfig()->getConfigParam('sCD_cancelMode');
+                if (!empty($cancelMode) && $cancelMode === 'delete') {
+                    $oOrder->delete();
+                } else {
+                    $oOrder->cancelOrder();
                 }
+
+                $sPaymentUrl = Registry::getConfig()->getCurrentShopUrl() . 'index.php?cl=payment';
+                Registry::getSession()->setVariable('commdooReinitializePaymentMode', true);
+                Registry::getUtils()->redirect($sPaymentUrl);
             }
         }
         return false;
@@ -270,6 +274,17 @@ class OrderController extends OrderController_parent
     protected function commdooGetOrder()
     {
         $sOrderId = Registry::getSession()->getVariable('sess_challenge');
+        if (!$this->loadOrder($sOrderId)) {
+            $sOrderNumber = Registry::getRequest()->getRequestEscapedParameter('onr');
+            $db = DatabaseProvider::getDb();
+            $sOrderId = $db->getOne("SELECT oxid FROM oxorder where OXORDERNR = '$sOrderNumber'");
+            return $this->loadOrder($sOrderId);
+        }
+        return true;
+    }
+
+    private function loadOrder($sOrderId)
+    {
         if (!empty($sOrderId)) {
             $oOrder = oxNew(Order::class);
             $oOrder->load($sOrderId);

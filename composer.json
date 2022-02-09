@@ -2,7 +2,7 @@
     "name":        "eimed/oxid-commdoo-payment",
     "description": "Oxid eSales Integration for Commdoo payment",
     "type":        "oxideshop-module",
-    "version":     "1.0.0",
+    "version":     "1.0.2",
     "keywords":    [
         "oxid",
         "modules",

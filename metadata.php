@@ -6,6 +6,7 @@
 
 use OxidEsales\Eshop\Application\Controller\OrderController;
 use OxidEsales\Eshop\Application\Model\Order;
+use OxidEsales\Eshop\Application\Model\BasketItem;
 use OxidEsales\Eshop\Application\Model\PaymentGateway;
 
 $sMetadataVersion = '2.0';
@@ -23,7 +24,7 @@ $aModule = array(
         'en' => '<h2>OXID6 payment module</h2>',
     ),
     'thumbnail' => 'out/pictures/commdoo_payment_logo.png',
-    'version' => '1.0.0',
+    'version' => '1.0.2',
     'author' => 'EIKONA Media GmbH',
     'url' => 'https://www.eikona-media.de',
     'email' => 'info@eikona-media.de',
@@ -31,6 +32,7 @@ $aModule = array(
         OrderController::class => \Eimed\Modules\CommdooPayment\Controller\OrderController::class,
         Order::class           => \Eimed\Modules\CommdooPayment\Model\CommDooOrder::class,
         PaymentGateway::class  => \Eimed\Modules\CommdooPayment\Model\CommDooPaymentGateway::class,
+        BasketItem::class      => \Eimed\Modules\CommdooPayment\Model\CommDooBasketItem::class,
     ),
     'events' => array(
         'onActivate'   => 'Eimed\Modules\CommdooPayment\Module::onActivate',

@@ -7,6 +7,7 @@ namespace Eimed\Modules\CommdooPayment\Model;
 use Eimed\Modules\CommdooPayment\Api\ApiFrontendUrlValidator;
 use Eimed\Modules\CommdooPayment\Constants;
 use Eimed\Modules\CommdooPayment\Traits\LoggerTrait;
+use OxidEsales\Eshop\Application\Model\Order;
 use OxidEsales\Eshop\Application\Model\PaymentGateway;
 use OxidEsales\Eshop\Core\DatabaseProvider;
 use OxidEsales\Eshop\Core\Field;
@@ -56,7 +57,7 @@ class CommDooPaymentGateway extends CommDooPaymentGateway_parent
         $lang = Registry::getLang()->getLanguageAbbr();
 
         $callbackUrl = Registry::getConfig()->getCurrentShopUrl().'index.php?cl=order&fnc=handleCommDooReturn';
-        $callbackUrl .= $this->getAdditionalParameters();
+        $callbackUrl .= $this->getAdditionalParameters($oOrder);
         $request->set("successURL", $callbackUrl);
         $request->set("failURL", $callbackUrl);
 
@@ -108,7 +109,11 @@ class CommDooPaymentGateway extends CommDooPaymentGateway_parent
         return false;
     }
 
-    private function getAdditionalParameters()
+    /**
+     * @param Order $oOrder
+     * @return string
+     */
+    private function getAdditionalParameters(Order $oOrder)
     {
         $oRequest = Registry::getRequest();
         $oSession = Registry::getSession();
@@ -139,6 +144,7 @@ class CommDooPaymentGateway extends CommDooPaymentGateway_parent
         }
         $sAddParams .= '&ord_agb=1';
         $sAddParams .= '&rtoken='.$oSession->getRemoteAccessToken();
+        $sAddParams .= '&onr='.$oOrder->oxorder__oxordernr->value;
 
         return $sAddParams;
     }
