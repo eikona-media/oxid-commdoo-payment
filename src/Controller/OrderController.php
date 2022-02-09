@@ -68,7 +68,7 @@ class OrderController extends OrderController_parent
 
         try {
             $oOrder = $this->commdooGetOrder();
-            if (!$oOrder) {
+            if ($oOrder === null) {
                 $this->getLogger()->debug([
                     'sess_challenge' => Registry::getSession()->getVariable('sess_challenge'),
                     'order_number' => Registry::getRequest()->getRequestEscapedParameter('onr')
@@ -267,20 +267,20 @@ class OrderController extends OrderController_parent
     }
 
     /**
-     * Load previously created order
-     *
-     * @return CommDooOrder|false
+     * @return CommDooOrder|null
+     * @throws \OxidEsales\Eshop\Core\Exception\DatabaseConnectionException
      */
-    protected function commdooGetOrder()
+    protected function commdooGetOrder(): ?CommDooOrder
     {
         $sOrderId = Registry::getSession()->getVariable('sess_challenge');
-        if (!$this->loadOrder($sOrderId)) {
+        $order = $this->loadOrder($sOrderId);
+        if ($order === null) {
             $sOrderNumber = Registry::getRequest()->getRequestEscapedParameter('onr');
             $db = DatabaseProvider::getDb();
             $sOrderId = $db->getOne("SELECT oxid FROM oxorder where OXORDERNR = '$sOrderNumber'");
             return $this->loadOrder($sOrderId);
         }
-        return true;
+        return $order;
     }
 
     private function loadOrder($sOrderId)
@@ -293,6 +293,6 @@ class OrderController extends OrderController_parent
                 return $oOrder;
             }
         }
-        return false;
+        return null;
     }
 }
