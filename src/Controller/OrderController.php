@@ -102,6 +102,7 @@ class OrderController extends OrderController_parent
                     }
 
                     $oOrder->oxorder__cdpaymentstatus = new Field($status);
+                    $oOrder->save();
 
                     throw new CommdooPaymentException(Registry::getLang()->translateString($sErrorIdent));
                 } else {
