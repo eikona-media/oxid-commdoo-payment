@@ -170,6 +170,7 @@ class OrderController extends OrderController_parent
 
         // Check if is faild callback
         if (!empty($errornumber) || !empty($errortext)) {
+            $oOrder->oxorder__providerpurpose = new Field($errortext);
             $oOrder->cancelOrder();
             return ['success' => false, 'errorId' => $errornumber, 'error' => $errortext];
         }
