@@ -283,8 +283,14 @@ class CommDooOrder extends CommDooOrder_parent
 
     public function commdooPrepareFinalizeOrder()
     {
-        $oBasket = $this->commdooRecreateBasket();
-        Registry::getSession()->setBasket($oBasket);
+        $session = Registry::getSession();
+        $oBasket = $session->getBasket();
+        if ($oBasket) {
+            $oBasket = $this->commdooRecreateBasket();
+            $session->setBasket($oBasket);
+        }
+
+        $this->_oBasket = $oBasket;
 
         $this->commdooFinalizeReturnMode = true;
         $this->commdooFinishOrderReturnMode = true;
