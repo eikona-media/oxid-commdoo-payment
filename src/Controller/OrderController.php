@@ -45,19 +45,6 @@ class OrderController extends OrderController_parent
     }
 
     /**
-     * Writes error-status to session and redirects to payment page
-     * @param string $sErrorLangIdent
-     * @return false
-     */
-    protected function redirectWithError($sErrorLangIdent)
-    {
-        Registry::getSession()->setVariable('payerror', -50);
-        Registry::getSession()->setVariable('payerrortext', Registry::getLang()->translateString($sErrorLangIdent));
-        Registry::getUtils()->redirect(Registry::getConfig()->getCurrentShopUrl().'index.php?cl=payment');
-        return false;
-    }
-
-    /**
      * Handles Commdoo Return Callback
      * @return false|string|null
      */
@@ -117,8 +104,6 @@ class OrderController extends OrderController_parent
 
                     $bReturn = parent::execute();
 
-                    Registry::getSession()->setVariable('commdooReinitializePaymentMode', false);
-
                     // Provide backward compatibility
                     if ($bReturn) {
                         if ($oOrder->oxorder__cdpaymentstatus->value === Constants::PAYMENT_STATUS_PENDING) {
@@ -147,8 +132,14 @@ class OrderController extends OrderController_parent
                     $oOrder->cancelOrder();
                 }
 
-                $sPaymentUrl = Registry::getConfig()->getCurrentShopUrl() . 'index.php?cl=payment';
-                Registry::getSession()->setVariable('commdooReinitializePaymentMode', true);
+                Registry::getSession()->deleteVariable('sess_challenge');
+
+                if ($oOrder->oxorder__cdpaymentstatus->value === Constants::PAYMENT_STATUS_FAILED) {
+                    Registry::getSession()->setVariable('payerror', 2);
+                    $sPaymentUrl = Registry::getConfig()->getCurrentShopUrl() . 'index.php?cl=payment&payerror=2';
+                } else {
+                    $sPaymentUrl = Registry::getConfig()->getCurrentShopUrl() . 'index.php?cl=payment';
+                }
                 Registry::getUtils()->redirect($sPaymentUrl);
             }
         }
@@ -172,7 +163,7 @@ class OrderController extends OrderController_parent
         if (!empty($errornumber) || !empty($errortext)) {
             $oOrder->oxorder__providerpurpose = new Field($errortext);
             $oOrder->cancelOrder();
-            return ['success' => false, 'errorId' => $errornumber, 'error' => $errortext];
+            return ['success' => false, 'status' => 'failed', 'errorId' => $errornumber, 'error' => $errortext];
         }
 
         // Check transaction status

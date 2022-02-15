@@ -34,13 +34,6 @@ class CommDooOrder extends CommDooOrder_parent
     protected $commdooFinishOrderReturnMode = false;
 
     /**
-     * Toggles certain behaviours in finalizeOrder for when the the payment is being reinitialized at a later point in time
-     *
-     * @var bool
-     */
-    protected $commdooReinitializePaymentMode = false;
-
-    /**
      * State is saved to prevent order being set to transstatus OK during recalculation
      *
      * @var bool|null
@@ -76,9 +69,6 @@ class CommDooOrder extends CommDooOrder_parent
             $returnAfterPayment = (Registry::getRequest()->getRequestEscapedParameter('fnc') == 'handleCommDooReturn');
             if (Module::supportsPaymentType($oBasket->getPaymentId()) === true && $returnAfterPayment) {
                 $this->commdooFinalizeReturnMode = true;
-            }
-            if (Registry::getSession()->getVariable('commdooReinitializePaymentMode')) {
-                $this->commdooReinitializePaymentMode = true;
             }
             $this->isCommdooInit = true;
         }
@@ -142,14 +132,12 @@ class CommDooOrder extends CommDooOrder_parent
     public function validatePayment($oBasket, $oUser = null)
     {
         $this->commdooInit($oBasket);
-        if ($this->commdooReinitializePaymentMode === false) {
-            $oReflection = new \ReflectionMethod(\OxidEsales\Eshop\Application\Model\Order::class, 'validatePayment');
-            $aParams = $oReflection->getParameters();
-            if (count($aParams) == 1) {
-                return parent::validatePayment($oBasket); // Oxid 6.1 didnt have the $oUser parameter yet
-            }
-            return parent::validatePayment($oBasket, $oUser);
+        $oReflection = new \ReflectionMethod(\OxidEsales\Eshop\Application\Model\Order::class, 'validatePayment');
+        $aParams = $oReflection->getParameters();
+        if (count($aParams) == 1) {
+            return parent::validatePayment($oBasket); // Oxid 6.1 didnt have the $oUser parameter yet
         }
+        return parent::validatePayment($oBasket, $oUser);
     }
 
     /**
@@ -191,7 +179,7 @@ class CommDooOrder extends CommDooOrder_parent
      */
     protected function _checkOrderExist($sOxId = null)
     {
-        if ($this->commdooFinalizeReturnMode === false && $this->commdooReinitializePaymentMode === false) {
+        if ($this->commdooFinalizeReturnMode === false) {
             return parent::_checkOrderExist($sOxId);
         }
         return false; // In finalize return situation the order will already exist, but thats ok
@@ -212,7 +200,7 @@ class CommDooOrder extends CommDooOrder_parent
      */
     protected function _setNumber()
     {
-        if (!empty($this->oxorder__oxordernr->value) && $this->commdooReinitializePaymentMode === true) {
+        if (!empty($this->oxorder__oxordernr->value)) {
             return true;
         }
         return parent::_setNumber();

@@ -29,6 +29,7 @@ class CommDooPaymentGateway extends CommDooPaymentGateway_parent
     public function executePayment($dAmount, &$oOrder): bool
     {
         if(!$oOrder->isCommDooOrder()) {
+            Registry::getSession()->deleteVariable('commdooIsRedirected');
             return parent::executePayment($dAmount, $oOrder);
         }
 
