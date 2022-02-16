@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Eimed\Modules\CommdooPayment\Controller;
 
+use Eimed\Modules\CommdooPayment\Api\ApiFaildUrlValidator;
 use Eimed\Modules\CommdooPayment\Api\ApiSuccessfulUrlValidator;
 use Eimed\Modules\CommdooPayment\Api\ApiUrlValidatorService;
 use Eimed\Modules\CommdooPayment\Constants;
@@ -237,6 +238,10 @@ class OrderController extends OrderController_parent
         }
 
         $response = new ApiSuccessfulUrlValidator();
+        if (!empty($request['errortext'])) {
+            $response = new ApiFaildUrlValidator();
+        }
+
         foreach ($request as $key => $value) {
             try {
                 $response->set($key, $value);
