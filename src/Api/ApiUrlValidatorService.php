@@ -45,7 +45,7 @@ abstract class ApiUrlValidatorService
     {
         $lowercase_name = strtolower($name);
         if (!in_array($lowercase_name, $this->order)) {
-            throw new \InvalidArgumentException("Key $name is not in the parameter list. Please consult the documentation!");
+            return;
         }
         $this->values[$lowercase_name] = $value;
         $this->hash_valid = false;

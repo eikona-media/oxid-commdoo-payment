@@ -243,11 +243,7 @@ class OrderController extends OrderController_parent
         }
 
         foreach ($request as $key => $value) {
-            try {
-                $response->set($key, $value);
-            } catch (\InvalidArgumentException $exception) {
-                $this->getLogger()->debug($key . "=>" . $value . " was received but could not be processed");
-            }
+            $response->set($key, $value);
         }
 
         if (empty($request['errortext'])) {
