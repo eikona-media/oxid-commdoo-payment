@@ -29,7 +29,7 @@ class OrderController extends OrderController_parent
     /**
      * @return string
      */
-    public function render(): string
+    public function render()
     {
         $sSessChallenge = Registry::getSession()->getVariable('sess_challenge');
         $blCommdooIsRedirected = Registry::getSession()->getVariable('commdooIsRedirected');
