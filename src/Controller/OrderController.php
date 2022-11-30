@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Eimed\Modules\CommdooPayment\Controller;
 
+use Eimed\Modules\CommdooPayment\Api\ApiFaildUrlValidator;
 use Eimed\Modules\CommdooPayment\Api\ApiSuccessfulUrlValidator;
 use Eimed\Modules\CommdooPayment\Api\ApiUrlValidatorService;
 use Eimed\Modules\CommdooPayment\Constants;
@@ -11,6 +12,8 @@ use Eimed\Modules\CommdooPayment\Module;
 use Eimed\Modules\CommdooPayment\Traits\LoggerTrait;
 use OxidEsales\Eshop\Application\Model\Order;
 use OxidEsales\Eshop\Application\Model\Payment;
+use OxidEsales\Eshop\Application\Model\Voucher;
+use OxidEsales\Eshop\Application\Model\VoucherList;
 use OxidEsales\Eshop\Core\DatabaseProvider;
 use OxidEsales\Eshop\Core\Field;
 use OxidEsales\Eshop\Core\Registry;
@@ -28,7 +31,7 @@ class OrderController extends OrderController_parent
     /**
      * @return string
      */
-    public function render(): string
+    public function render()
     {
         $sSessChallenge = Registry::getSession()->getVariable('sess_challenge');
         $blCommdooIsRedirected = Registry::getSession()->getVariable('commdooIsRedirected');
@@ -64,8 +67,10 @@ class OrderController extends OrderController_parent
             }
 
             if ($oOrder->getBasket() === null) {
-                $oOrder->commdooRecreateBasket();
+                $this->_oBasket = $oOrder->commdooRecreateBasket();
             }
+
+            $this->releaseVoucher($oOrder);
 
             /** @var Payment $oPayment */
             $oPayment = $this->getPayment();
@@ -102,7 +107,28 @@ class OrderController extends OrderController_parent
                     $this->getLogger()->log($_REQUEST);
                     $oOrder->commdooPrepareFinalizeOrder();
 
-                    $bReturn = parent::execute();
+
+                    $bReturn = null;
+                    try {
+                        $oBasket = $this->getBasket();
+                        $oUser = $this->getUser();
+
+                        //finalizing ordering process (validating, storing order into DB, executing payment, setting status ...)
+                        $iSuccess = $oOrder->finalizeOrder($oBasket, $oUser);
+
+                        // performing special actions after user finishes order (assignment to special user groups)
+                        $oUser->onOrderExecute($oBasket, $iSuccess);
+
+                        // proceeding to next view
+                        $bReturn = $this->_getNextStep($iSuccess);
+                    } catch (\OxidEsales\Eshop\Core\Exception\OutOfStockException $oEx) {
+                        $oEx->setDestination('basket');
+                        Registry::getUtilsView()->addErrorToDisplay($oEx, false, true, 'basket');
+                    } catch (\OxidEsales\Eshop\Core\Exception\NoArticleException $oEx) {
+                        Registry::getUtilsView()->addErrorToDisplay($oEx);
+                    } catch (\OxidEsales\Eshop\Core\Exception\ArticleInputException $oEx) {
+                        Registry::getUtilsView()->addErrorToDisplay($oEx);
+                    }
 
                     // Provide backward compatibility
                     if ($bReturn) {
@@ -237,12 +263,12 @@ class OrderController extends OrderController_parent
         }
 
         $response = new ApiSuccessfulUrlValidator();
+        if (!empty($request['errortext'])) {
+            $response = new ApiFaildUrlValidator();
+        }
+
         foreach ($request as $key => $value) {
-            try {
-                $response->set($key, $value);
-            } catch (\InvalidArgumentException $exception) {
-                $this->getLogger()->debug($key . "=>" . $value . " was received but could not be processed");
-            }
+            $response->set($key, $value);
         }
 
         if (empty($request['errortext'])) {
@@ -286,5 +312,17 @@ class OrderController extends OrderController_parent
             }
         }
         return null;
+    }
+
+    private function releaseVoucher(Order $oOrder)
+    {
+        $voucherList = $oOrder->getVoucherList();
+        if (!empty($voucherList)) {
+            /** @var Voucher $oVoucher */
+            foreach($voucherList as $oVoucher) {
+                $oVoucher->oxvouchers__oxorderid->setValue(null);
+                $oVoucher->save();
+            }
+        }
     }
 }

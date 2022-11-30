@@ -8,6 +8,8 @@ use OxidEsales\Eshop\Application\Model\Article;
 use OxidEsales\Eshop\Application\Model\Basket;
 use OxidEsales\Eshop\Application\Model\BasketItem;
 use OxidEsales\Eshop\Application\Model\Order;
+use OxidEsales\Eshop\Application\Model\Voucher;
+use OxidEsales\Eshop\Application\Model\VoucherList;
 use OxidEsales\Eshop\Core\Counter;
 use OxidEsales\Eshop\Core\Field;
 use OxidEsales\Eshop\Core\Registry;
@@ -188,6 +190,17 @@ class CommDooOrder extends CommDooOrder_parent
     public function _executePayment(Basket $oBasket, $oUserpayment)
     {
         if ($this->commdooFinalizeReturnMode === false) {
+
+            // Add Voucher
+            foreach($oBasket->getVouchers() as $voucherOxId => $oVoucher) {
+                $oVoucher = oxNew(Voucher::class);
+                if ($oVoucher->load($voucherOxId)) {
+                    $this->_aVoucherList[$oVoucher->oxvouchers__oxid->value] = $oVoucher;
+                    $oVoucher->oxvouchers__oxorderid->setValue($this->getId());
+                    $oVoucher->save();
+                }
+            }
+
             return parent::_executePayment($oBasket, $oUserpayment);
         }
         return true;
@@ -246,6 +259,7 @@ class CommDooOrder extends CommDooOrder_parent
     {
         Registry::getSession()->setVariable('commdoo_ignoreStockCheck', true);
 
+        $this->reloadDiscount(true);
         $oBasket = $this->_getOrderBasket();
 
         // add this order articles to virtual basket and recalculates basket

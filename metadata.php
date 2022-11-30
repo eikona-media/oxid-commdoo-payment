@@ -88,6 +88,15 @@ $aModule = array(
             "name" => "aCD_frontend_request_params",
             "type" => "arr",
             "value" => array(
+                "cl",
+                "fnc",
+                "onr",
+                "stoken",
+                "sDeliveryAddressMD5",
+                "force_sid",
+                "ord_agb",
+                "rtoken",
+
                 "clientid",
                 "payment",
                 "avskey",
@@ -244,7 +253,7 @@ $aModule = array(
                 "providertransactionid",
                 "providerpurpose",
                 "additionaldata",
-                "timestamp"
+                "timestamp",
             ),
         ],
         [
@@ -257,7 +266,7 @@ $aModule = array(
                 "errornumber",
                 "errortext",
                 "additionaldata",
-                "timestamp"
+                "timestamp",
             ),
         ],
     ],
