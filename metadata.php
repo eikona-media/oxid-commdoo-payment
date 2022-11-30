@@ -24,7 +24,7 @@ $aModule = array(
         'en' => '<h2>OXID6 payment module</h2>',
     ),
     'thumbnail' => 'out/pictures/commdoo_payment_logo.png',
-    'version' => '1.0.2',
+    'version' => '1.2.0',
     'author' => 'EIKONA Media GmbH',
     'url' => 'https://www.eikona-media.de',
     'email' => 'info@eikona-media.de',
