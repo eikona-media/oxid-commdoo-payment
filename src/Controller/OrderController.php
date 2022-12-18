@@ -113,6 +113,15 @@ class OrderController extends OrderController_parent
                         $oBasket = $this->getBasket();
                         $oUser = $this->getUser();
 
+                        if ($oUser === null) {
+                            // Fallback!
+                            $oUser = $oOrder->getOrderUser();
+                        }
+
+                        if ($oUser === null) {
+                            throw new CommdooPaymentException('Missing active/order user!');
+                        }
+
                         //finalizing ordering process (validating, storing order into DB, executing payment, setting status ...)
                         $iSuccess = $oOrder->finalizeOrder($oBasket, $oUser);
 
