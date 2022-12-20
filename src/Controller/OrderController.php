@@ -113,12 +113,12 @@ class OrderController extends OrderController_parent
                         $oBasket = $this->getBasket();
                         $oUser = $this->getUser();
 
-                        if ($oUser === null) {
+                        if (!$oUser) {
                             // Fallback!
                             $oUser = $oOrder->getOrderUser();
                         }
 
-                        if ($oUser === null) {
+                        if (!$oUser) {
                             throw new CommdooPaymentException('Missing active/order user!');
                         }
 
