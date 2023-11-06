@@ -28,7 +28,7 @@ abstract class ApiUrlValidatorService
         $this->base_url = $this->getConfigParam("sCD_baseurl");
     }
 
-    protected function getConfigParam($key, $default="")
+    protected function getConfigParam($key, $default = "")
     {
         if (!isset($this->config)) {
             $this->config = Registry::getConfig();
@@ -43,11 +43,12 @@ abstract class ApiUrlValidatorService
 
     public function set($name, $value)
     {
-        $lowercase_name = strtolower($name);
-        if (!in_array($lowercase_name, $this->order)) {
+        $lowercaseName = strtolower($name);
+        $checkName = $this->getCheckupKey($name);
+        if (!in_array($checkName, $this->order)) {
             return;
         }
-        $this->values[$lowercase_name] = $value;
+        $this->values[$lowercaseName] = $value;
         $this->hash_valid = false;
     }
 
@@ -69,7 +70,7 @@ abstract class ApiUrlValidatorService
     public function getUrl()
     {
         if ($this->hash_valid == false) {
-            $this->generateUrlHash();
+            $this->setUrlHash();
         }
         return $this->url;
     }
@@ -77,27 +78,76 @@ abstract class ApiUrlValidatorService
     public function getHash()
     {
         if ($this->hash_valid == false) {
-            $this->generateUrlHash();
+            $this->setUrlHash();
         }
         return $this->hash;
     }
 
-    public function generateUrlHash()
+    public function setUrlHash()
     {
-        $http_args = array();
+        $hash = '';
+        $this->url = $this->generateHashUrl($this->values, $hash);
+        $this->hash = $hash;
+        $this->hash_valid = true;
+    }
+
+    private function getCheckupKey(string $key): string
+    {
+        $ret = preg_replace('/item\[\d\]-/', 'item[x]-', $key);
+        if ($ret !== null) {
+            $key = $ret;
+        }
+        return $key;
+    }
+
+    private function generateHashUrl(array $values, string &$hash): string
+    {
+        $params = array();
         $cleartext = "";
         foreach ($this->order as $item) {
-            if (array_key_exists($item, $this->values)) {
-                $http_args[$item] = $this->values[$item];
-                $cleartext .= $this->values[$item];
+            foreach ($values as $key => $value) {
+                $checkKey = $this->getCheckupKey($key);
+                if ($checkKey === $item) {
+                    $params[$key] = $value;
+                    $cleartext .= $value;
+                }
             }
         }
 
-        $hash = strtoupper(sha1($cleartext . $this->shared_secret));  //build url
-        $http_args["hash"] = $hash;
+        $hash = strtoupper(sha1($cleartext . $this->shared_secret));
+        $params["hash"] = $hash;
 
-        $this->url = $this->base_url. http_build_query($http_args);
-        $this->hash = $hash;
-        $this->hash_valid = true;
+        return $this->base_url . http_build_query($params, '', null, PHP_QUERY_RFC3986);
+    }
+
+    public function check(): void
+    {
+        $values = [
+            'clientid' => '99999999',
+            'payment' => 'all',
+            'referenceid' => '316458a1d8cf07815fc78dd0ff70b63d',
+            'amount' => 1234,
+            'currency' => 'EUR',
+            'salutation' => 'Herr',
+            'firstname' => 'Max',
+            'lastname' => 'Musterman',
+            'street' => 'Musterstraße',
+            'housenumber' => 123,
+            'postalcode' => '45678',
+            'city' => 'Musterstadt',
+            'emailaddress' => 'test@commdoo.de',
+            'country' => 'DEU',
+            'successurl' => 'http://localhost/sample.php?result=success',
+            'failurl' => 'http://localhost/sample.php?result=fail',
+            'hash' => '2e24d72d09b8f3dae91db2dea43a081727c8864f',
+            'language' => 'DEU',
+        ];
+
+        $hash = '';
+        $url = $this->generateHashUrl($values, $hash);
+
+        if ($hash === '271b7b62089c76e0aed23b82872c9eca393ad5b8') {
+            throw new \Exception('the data are not UTF-8 encoded, but iso-8859');
+        }
     }
 }

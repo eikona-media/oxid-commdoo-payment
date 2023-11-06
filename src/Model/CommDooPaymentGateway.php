@@ -8,6 +8,7 @@ use Eimed\Modules\CommdooPayment\Api\ApiFrontendUrlValidator;
 use Eimed\Modules\CommdooPayment\Constants;
 use Eimed\Modules\CommdooPayment\Traits\LoggerTrait;
 use OxidEsales\Eshop\Application\Model\Order;
+use OxidEsales\Eshop\Application\Model\OrderArticle;
 use OxidEsales\Eshop\Application\Model\PaymentGateway;
 use OxidEsales\Eshop\Core\DatabaseProvider;
 use OxidEsales\Eshop\Core\Field;
@@ -88,6 +89,22 @@ class CommDooPaymentGateway extends CommDooPaymentGateway_parent
         $sCountryId = $oOrder->oxorder__oxbillcountryid->value;
         $request->set("country", $db->getOne(sprintf("SELECT oxisoalpha3 FROM oxcountry WHERE oxid = '%s'", $sCountryId)));
         $request->set("referenceID", $internal_order_id);
+
+        /** @var OrderArticle $orderArticle */
+        $pos = 1;
+        foreach ($oOrder->getOrderArticles() as $orderArticle) {
+            $orderPrefix = "item[$pos]";
+            $request->set("$orderPrefix-id", $orderArticle->oxorderarticles__oxartid->value);
+            $request->set("$orderPrefix-name", $orderArticle->oxorderarticles__oxtitle->value);
+            $request->set("$orderPrefix-description", $orderArticle->oxorderarticles__oxshortdesc->value);
+            $request->set("$orderPrefix-quantity", $orderArticle->oxorderarticles__oxamount->value);
+            $request->set("$orderPrefix-totalprice", $orderArticle->oxorderarticles__oxbrutprice->value);
+            $request->set("$orderPrefix-currency", $oOrder->oxorder__oxcurrency->value);
+            $request->set("$orderPrefix-taxpercentage", $orderArticle->oxorderarticles__oxvat->value);
+            $request->set("$orderPrefix-taxamount", $orderArticle->oxorderarticles__oxvatprice->value);
+            $pos++;
+        }
+        // $request->check();
 
         $sPaymentUrl = $request->getUrl();
 
