@@ -71,6 +71,13 @@ class Module
                     "de" => "",
                 ),
             ),
+            "zinia" => array(
+                "display_name" => "Kauf auf Rechnung",
+                "descriptions" => array(
+                    "en" => "",
+                    "de" => "",
+                ),
+            ),
         );
     }
 

@@ -55,13 +55,13 @@ class CommDooPaymentGateway extends CommDooPaymentGateway_parent
         $request->set("payment", $payment_key);
 
         // config params
-        $request->set("clientID", $config->getConfigParam('sCD_clientid')); 
+        $request->set("clientid", $config->getConfigParam('sCD_clientid'));
         $lang = Registry::getLang()->getLanguageAbbr();
 
         $callbackUrl = Registry::getConfig()->getCurrentShopUrl().'index.php?cl=order&fnc=handleCommDooReturn';
         $callbackUrl .= $this->getAdditionalParameters($oOrder);
-        $request->set("successURL", $callbackUrl);
-        $request->set("failURL", $callbackUrl);
+        $request->set("successurl", $callbackUrl);
+        $request->set("failurl", $callbackUrl);
 
         // order params
         switch (strtolower($oOrder->oxorder__oxbillsal->value)) {
@@ -77,7 +77,7 @@ class CommDooPaymentGateway extends CommDooPaymentGateway_parent
         if (!empty($paymentMode)) {
             $request->set("paymentmode", $paymentMode);
         }
-        $request->set("amount", $dAmount * 100);
+        $request->set("amount", $this->getPrice($dAmount));
         $request->set("currency", $oOrder->oxorder__oxcurrency->value);
         $request->set("firstName", $oOrder->oxorder__oxbillfname->value);
         $request->set("lastName", $oOrder->oxorder__oxbilllname->value);
@@ -88,28 +88,41 @@ class CommDooPaymentGateway extends CommDooPaymentGateway_parent
         $request->set("emailAddress", $oOrder->oxorder__oxbillemail->value);
         $sCountryId = $oOrder->oxorder__oxbillcountryid->value;
         $request->set("country", $db->getOne(sprintf("SELECT oxisoalpha3 FROM oxcountry WHERE oxid = '%s'", $sCountryId)));
-        $request->set("referenceID", $internal_order_id);
+        $request->set("referenceid", $internal_order_id);
 
         /** @var OrderArticle $orderArticle */
         $pos = 1;
         foreach ($oOrder->getOrderArticles() as $orderArticle) {
-            $orderPrefix = "item[$pos]";
+            $orderPrefix = "item$pos";
             $request->set("$orderPrefix-id", $orderArticle->oxorderarticles__oxartid->value);
             $request->set("$orderPrefix-name", $orderArticle->oxorderarticles__oxtitle->value);
             $request->set("$orderPrefix-description", $orderArticle->oxorderarticles__oxshortdesc->value);
             $request->set("$orderPrefix-quantity", $orderArticle->oxorderarticles__oxamount->value);
-            $request->set("$orderPrefix-totalprice", $orderArticle->oxorderarticles__oxbrutprice->value);
+            $request->set("$orderPrefix-totalprice", $this->getPrice($orderArticle->oxorderarticles__oxbrutprice->value));
             $request->set("$orderPrefix-currency", $oOrder->oxorder__oxcurrency->value);
-            $request->set("$orderPrefix-taxpercentage", $orderArticle->oxorderarticles__oxvat->value);
-            $request->set("$orderPrefix-taxamount", $orderArticle->oxorderarticles__oxvatprice->value);
+            //$request->set("$orderPrefix-taxpercentage", $orderArticle->oxorderarticles__oxvat->value);
+            //$request->set("$orderPrefix-taxamount", $this->getPrice($orderArticle->oxorderarticles__oxvatprice->value));
             $pos++;
         }
-        // $request->check();
+
+        $deliveryCost = $oOrder->oxorder__oxdelcost->value;
+        if ($deliveryCost > 0) {
+            $orderPrefix = "item$pos";
+            $request->set("$orderPrefix-id", 'DELIVERY');
+            $request->set("$orderPrefix-name", 'Versandkosten');
+            $request->set("$orderPrefix-description", '');
+            $request->set("$orderPrefix-quantity", 1);
+            $request->set("$orderPrefix-totalprice", $this->getPrice($deliveryCost));
+            $request->set("$orderPrefix-currency", $oOrder->oxorder__oxcurrency->value);
+        }
+
+        //$request->check();
 
         $sPaymentUrl = $request->getUrl();
 
         $logData = array_replace([], $request->getValues());
         $logData['hash'] = $request->getHash();
+        $logData['redirectUrl'] = $sPaymentUrl;
 
         $this->getLogger()->setTitle('Commdoo Redirect');
         $this->getLogger()->log($logData);
@@ -165,5 +178,10 @@ class CommDooPaymentGateway extends CommDooPaymentGateway_parent
         $sAddParams .= '&onr='.$oOrder->oxorder__oxordernr->value;
 
         return $sAddParams;
+    }
+
+    private function getPrice(float $price): int
+    {
+        return intval($price * 100);
     }
 }

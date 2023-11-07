@@ -3,10 +3,13 @@
 
 namespace Eimed\Modules\CommdooPayment\Api;
 
+use Eimed\Modules\CommdooPayment\Traits\LoggerTrait;
 use OxidEsales\Eshop\Core\Registry;
 
 abstract class ApiUrlValidatorService
 {
+    use LoggerTrait;
+
     /**
      * @var array
      */
@@ -44,7 +47,7 @@ abstract class ApiUrlValidatorService
     public function set($name, $value)
     {
         $lowercaseName = strtolower($name);
-        $checkName = $this->getCheckupKey($name);
+        $checkName = $this->getCheckupKey($lowercaseName);
         if (!in_array($checkName, $this->order)) {
             return;
         }
@@ -86,38 +89,70 @@ abstract class ApiUrlValidatorService
     public function setUrlHash()
     {
         $hash = '';
-        $this->url = $this->generateHashUrl($this->values, $hash);
+        $this->url = $this->generateHashUrl($this->values, $this->shared_secret, $hash);
         $this->hash = $hash;
         $this->hash_valid = true;
     }
 
     private function getCheckupKey(string $key): string
     {
-        $ret = preg_replace('/item\[\d\]-/', 'item[x]-', $key);
+        $ret = preg_replace('/item\d-/', 'item[x]-', $key);
         if ($ret !== null) {
             $key = $ret;
         }
         return $key;
     }
 
-    private function generateHashUrl(array $values, string &$hash): string
+    private function generateHashUrl(array $values, string $secret, string &$hash): string
     {
+        function startsWith($haystack, $needle)
+        {
+            $length = strlen($needle);
+            return substr($haystack, 0, $length) === $needle;
+        }
+
         $params = array();
+        $items = array();
         $cleartext = "";
-        foreach ($this->order as $item) {
-            foreach ($values as $key => $value) {
-                $checkKey = $this->getCheckupKey($key);
-                if ($checkKey === $item) {
-                    $params[$key] = $value;
-                    $cleartext .= $value;
+        $handledItems = true;
+        foreach ($this->order as $orderKey) {
+            // Sobald 'items' in der Reihenfolge kommen, behalten wir die Reihenfolge aus den values...
+            if (startsWith($orderKey, 'item')) {
+                foreach ($values as $key => $value) {
+                    if (startsWith($key, 'item') && !array_key_exists($key, $items)) {
+                        $items[$key] = $value;
+                        $cleartext .= $value;
+                    }
+                }
+                $handledItems = true;
+            } else {
+                if ($handledItems) {
+                    $params = array_merge($params, $items);
+                    $items = [];
+                }
+
+                foreach ($values as $key => $value) {
+                    if ($this->getCheckupKey($key) === $orderKey) {
+                        $params[$key] = $value;
+                        $cleartext .= $value;
+                    }
                 }
             }
         }
+        $params = array_merge($params, $items);
 
-        $hash = strtoupper(sha1($cleartext . $this->shared_secret));
+        $cleartext .= $secret;
+        $hash = strtoupper(sha1($cleartext));
+
+        $this->getLogger()->setTitle('Generate Hash');
+        $this->getLogger()->log([
+            'params' => $params,
+            'string' => $cleartext,
+            'hash' => $hash,
+        ]);
+
         $params["hash"] = $hash;
-
-        return $this->base_url . http_build_query($params, '', null, PHP_QUERY_RFC3986);
+        return $this->base_url . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
     }
 
     public function check(): void
@@ -139,14 +174,19 @@ abstract class ApiUrlValidatorService
             'country' => 'DEU',
             'successurl' => 'http://localhost/sample.php?result=success',
             'failurl' => 'http://localhost/sample.php?result=fail',
-            'hash' => '2e24d72d09b8f3dae91db2dea43a081727c8864f',
+            'timestamp' => 29032012142524,
             'language' => 'DEU',
+            'additionaldata' => 'testdata',
         ];
 
         $hash = '';
-        $url = $this->generateHashUrl($values, $hash);
+        $url = $this->generateHashUrl($values, 'test', $hash);
 
-        if ($hash === '271b7b62089c76e0aed23b82872c9eca393ad5b8') {
+        if ($hash === '2E24D72D09B8F3DAE91DB2DEA43A081727C8864F') {
+            return;
+        }
+
+        if ($hash === '271B7B62089C76E0AED23B82872C9ECA393AD5B8') {
             throw new \Exception('the data are not UTF-8 encoded, but iso-8859');
         }
     }
