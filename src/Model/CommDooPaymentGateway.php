@@ -90,30 +90,40 @@ class CommDooPaymentGateway extends CommDooPaymentGateway_parent
         $request->set("country", $db->getOne(sprintf("SELECT oxisoalpha3 FROM oxcountry WHERE oxid = '%s'", $sCountryId)));
         $request->set("referenceid", $internal_order_id);
 
+        $iAmount = 0;
+
         /** @var OrderArticle $orderArticle */
         $pos = 1;
         foreach ($oOrder->getOrderArticles() as $orderArticle) {
             $orderPrefix = "item$pos";
+            $posAmount = $this->getPrice($orderArticle->oxorderarticles__oxprice->value);
             $request->set("$orderPrefix-id", $orderArticle->oxorderarticles__oxartid->value);
             $request->set("$orderPrefix-name", $orderArticle->oxorderarticles__oxtitle->value);
             $request->set("$orderPrefix-description", $orderArticle->oxorderarticles__oxshortdesc->value);
             $request->set("$orderPrefix-quantity", $orderArticle->oxorderarticles__oxamount->value);
-            $request->set("$orderPrefix-totalprice", $this->getPrice($orderArticle->oxorderarticles__oxprice->value));
+            $request->set("$orderPrefix-totalprice", $posAmount);
             $request->set("$orderPrefix-currency", $oOrder->oxorder__oxcurrency->value);
             //$request->set("$orderPrefix-taxpercentage", $orderArticle->oxorderarticles__oxvat->value);
             //$request->set("$orderPrefix-taxamount", $this->getPrice($orderArticle->oxorderarticles__oxvatprice->value));
+            $iAmount = $iAmount + $posAmount;
             $pos++;
         }
 
         $deliveryCost = $oOrder->oxorder__oxdelcost->value;
         if ($deliveryCost > 0) {
             $orderPrefix = "item$pos";
+            $posAmount = $this->getPrice($deliveryCost);
             $request->set("$orderPrefix-id", 'DELIVERY');
             $request->set("$orderPrefix-name", 'Versandkosten');
             $request->set("$orderPrefix-description", '');
             $request->set("$orderPrefix-quantity", 1);
-            $request->set("$orderPrefix-totalprice", $this->getPrice($deliveryCost));
+            $request->set("$orderPrefix-totalprice", $posAmount);
             $request->set("$orderPrefix-currency", $oOrder->oxorder__oxcurrency->value);
+            $iAmount = $iAmount + $posAmount;
+        }
+
+        if ($iAmount !== $this->getPrice($dAmount)) {
+            $request->set("amount", $iAmount);
         }
 
         //$request->check();
