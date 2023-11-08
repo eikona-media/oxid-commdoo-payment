@@ -98,7 +98,7 @@ class CommDooPaymentGateway extends CommDooPaymentGateway_parent
             $request->set("$orderPrefix-name", $orderArticle->oxorderarticles__oxtitle->value);
             $request->set("$orderPrefix-description", $orderArticle->oxorderarticles__oxshortdesc->value);
             $request->set("$orderPrefix-quantity", $orderArticle->oxorderarticles__oxamount->value);
-            $request->set("$orderPrefix-totalprice", $this->getPrice($orderArticle->oxorderarticles__oxbrutprice->value));
+            $request->set("$orderPrefix-totalprice", $this->getPrice($orderArticle->oxorderarticles__oxprice->value));
             $request->set("$orderPrefix-currency", $oOrder->oxorder__oxcurrency->value);
             //$request->set("$orderPrefix-taxpercentage", $orderArticle->oxorderarticles__oxvat->value);
             //$request->set("$orderPrefix-taxamount", $this->getPrice($orderArticle->oxorderarticles__oxvatprice->value));
@@ -182,6 +182,7 @@ class CommDooPaymentGateway extends CommDooPaymentGateway_parent
 
     private function getPrice(float $price): int
     {
+        $price = Registry::getUtils()->fRound($price);
         return intval($price * 100);
     }
 }
