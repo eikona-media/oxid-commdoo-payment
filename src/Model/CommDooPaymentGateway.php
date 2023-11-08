@@ -97,7 +97,7 @@ class CommDooPaymentGateway extends CommDooPaymentGateway_parent
         foreach ($oOrder->getOrderArticles() as $orderArticle) {
             $orderPrefix = "item$pos";
             $posAmount = $this->getPrice($orderArticle->oxorderarticles__oxprice->value);
-            $request->set("$orderPrefix-id", $orderArticle->oxorderarticles__oxartid->value);
+            $request->set("$orderPrefix-id", uniqid());
             $request->set("$orderPrefix-name", $orderArticle->oxorderarticles__oxtitle->value);
             $request->set("$orderPrefix-description", $orderArticle->oxorderarticles__oxshortdesc->value);
             $request->set("$orderPrefix-quantity", $orderArticle->oxorderarticles__oxamount->value);
