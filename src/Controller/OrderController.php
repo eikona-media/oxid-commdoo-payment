@@ -13,11 +13,9 @@ use Eimed\Modules\CommdooPayment\Traits\LoggerTrait;
 use OxidEsales\Eshop\Application\Model\Order;
 use OxidEsales\Eshop\Application\Model\Payment;
 use OxidEsales\Eshop\Application\Model\Voucher;
-use OxidEsales\Eshop\Application\Model\VoucherList;
 use OxidEsales\Eshop\Core\DatabaseProvider;
 use OxidEsales\Eshop\Core\Field;
 use OxidEsales\Eshop\Core\Registry;
-use OxidEsales\EshopCommunity\Core\Database\Adapter\Doctrine\Database;
 use Weing\Modules\ProhandelConnector\Exception\CommdooPaymentException;
 
 /**
@@ -206,6 +204,10 @@ class OrderController extends OrderController_parent
         {
             case 'Reserved':
             case 'Charged':
+            if (empty($providerpurpose)) {
+                // Fallback. Ok seit Zinia...
+                $oOrder->oxorder__providerpurpose = new Field($transactionid);
+            }
                 break;
 
             default:
