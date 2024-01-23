@@ -77,7 +77,8 @@ class CommDooPaymentGateway extends CommDooPaymentGateway_parent
         if (!empty($paymentMode)) {
             $request->set("paymentmode", $paymentMode);
         }
-        $request->set("amount", $this->getPrice($dAmount));
+        $maxAmount = $this->getPrice($dAmount);
+        $request->set("amount", $maxAmount);
         $request->set("currency", $oOrder->oxorder__oxcurrency->value);
         $request->set("firstName", $oOrder->oxorder__oxbillfname->value);
         $request->set("lastName", $oOrder->oxorder__oxbilllname->value);
